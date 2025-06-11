@@ -27,7 +27,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../components/ui/alert-dialog";
-import { Clock, LogOut, Play, ExternalLink, Calendar } from "lucide-react";
+import {
+  Clock,
+  LogOut,
+  Play,
+  ExternalLink,
+  Calendar,
+  Palette,
+} from "lucide-react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 
@@ -37,10 +44,12 @@ export default function Profile() {
     lastAnalysis,
     isLoading,
     handleLogout,
+    handleViewAnalysis,
     formatDate,
     formatTime,
     getShapeInitial,
     getToneInitial,
+    formatSkinTone,
   } = useProfilePresenter();
 
   if (isLoading) {
@@ -122,13 +131,14 @@ export default function Profile() {
                         <div className="w-12 h-12 rounded-full bg-rose-500 flex items-center justify-center text-white font-bold text-lg">
                           {getShapeInitial(lastAnalysis.faceShape)}
                         </div>
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center text-white font-bold text-lg">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
                           {getToneInitial(lastAnalysis.skinTone)}
                         </div>
                       </div>
                       <div>
                         <h3 className="font-semibold text-lg sm:text-xl">
-                          {lastAnalysis.faceShape} • {lastAnalysis.skinTone}
+                          {lastAnalysis.faceShape} •{" "}
+                          {formatSkinTone(lastAnalysis.skinTone)}
                         </h3>
                         <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mt-2">
                           <div className="flex items-center gap-1">
@@ -142,6 +152,14 @@ export default function Profile() {
                         </div>
                       </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleViewAnalysis(lastAnalysis.id)}
+                      className="text-rose-600 border-rose-600 hover:bg-rose-50 w-full md:w-auto"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Results
+                    </Button>
                   </div>
 
                   {/* Grid Detail */}
@@ -162,8 +180,8 @@ export default function Profile() {
                     </div>
                     <div className="text-center p-4 bg-amber-50 rounded-lg">
                       <h4 className="font-medium mb-2">Skin Tone</h4>
-                      <span className="capitalize text-lg">
-                        {lastAnalysis.skinTone}
+                      <span className="text-lg">
+                        {formatSkinTone(lastAnalysis.skinTone)}
                       </span>
                     </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg">
@@ -174,29 +192,104 @@ export default function Profile() {
                     </div>
                   </div>
 
+                  {/* Color Groups Preview */}
+                  {lastAnalysis.recommendedGroups?.length > 0 && (
+                    <div className="mt-6 p-4 bg-purple-50 rounded-lg">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Palette className="h-4 w-4" />
+                        Recommended Color Palettes (
+                        {lastAnalysis.recommendedGroups.length} groups)
+                      </h4>
+                      <div className="space-y-3">
+                        {lastAnalysis.recommendedGroups
+                          .slice(0, 4)
+                          .map((group, index) => (
+                            <div
+                              key={index}
+                              className="bg-white rounded-lg border p-3"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium capitalize">
+                                  {group.group.replace(/_/g, " ")}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {group.colors.length} colors
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {group.colors.map((color, colorIndex) => (
+                                  <div
+                                    key={colorIndex}
+                                    className="w-6 h-6 rounded-md border border-gray-200 shadow-sm hover:scale-110 transition-transform cursor-pointer"
+                                    style={{ backgroundColor: color }}
+                                    title={`${color} - ${group.group.replace(
+                                      /_/g,
+                                      " "
+                                    )}`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        {lastAnalysis.recommendedGroups.length > 4 && (
+                          <div className="text-center pt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleViewAnalysis(lastAnalysis.id)
+                              }
+                              className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                            >
+                              View All {lastAnalysis.recommendedGroups.length}{" "}
+                              Color Groups
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Recommended Tutorials */}
                   {lastAnalysis.recommendations?.length > 0 && (
                     <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                      <h4 className="font-medium mb-3">
-                        Recommended Tutorial Videos
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Play className="h-4 w-4" />
+                        Recommended Tutorial Videos (
+                        {lastAnalysis.recommendations.length})
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {lastAnalysis.recommendations.map((url, index) => (
-                          <a
-                            key={index}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-3 bg-white rounded-lg border hover:shadow-md transition-shadow"
-                          >
-                            <Play className="h-4 w-4 text-red-500" />
-                            <span className="text-sm font-medium">
-                              Tutorial {index + 1}
-                            </span>
-                            <ExternalLink className="h-3 w-3 text-gray-400 ml-auto" />
-                          </a>
-                        ))}
+                        {lastAnalysis.recommendations
+                          .slice(0, 6)
+                          .map((url, index) => (
+                            <a
+                              key={index}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 p-3 bg-white rounded-lg border hover:shadow-md transition-shadow"
+                            >
+                              <Play className="h-4 w-4 text-red-500" />
+                              <span className="text-sm font-medium">
+                                Tutorial {index + 1}
+                              </span>
+                              <ExternalLink className="h-3 w-3 text-gray-400 ml-auto" />
+                            </a>
+                          ))}
                       </div>
+                      {lastAnalysis.recommendations.length > 6 && (
+                        <div className="text-center mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewAnalysis(lastAnalysis.id)}
+                            className="text-rose-600 border-rose-600 hover:bg-rose-50"
+                          >
+                            View All {lastAnalysis.recommendations.length}{" "}
+                            Videos
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
