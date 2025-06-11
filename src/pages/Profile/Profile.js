@@ -37,7 +37,6 @@ export default function Profile() {
     lastAnalysis,
     isLoading,
     handleLogout,
-    handleViewAnalysis,
     formatDate,
     formatTime,
     getShapeInitial,
@@ -143,14 +142,6 @@ export default function Profile() {
                         </div>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleViewAnalysis(lastAnalysis.id)}
-                      className="text-rose-600 border-rose-600 hover:bg-rose-400 w-full md:w-auto"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      View Results
-                    </Button>
                   </div>
 
                   {/* Grid Detail */}

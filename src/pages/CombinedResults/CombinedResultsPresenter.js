@@ -41,8 +41,6 @@ class CombinedResultsPresenter {
     }
     const { analysisResults, originalImage } = state;
 
-    console.log("📊 Received analysis results:", analysisResults);
-
     // Validasi data sebelum mapping
     if (!analysisResults?.faceShape || !analysisResults?.skinTone) {
       this.toast({

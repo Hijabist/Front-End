@@ -21,29 +21,62 @@ export class ProfilePresenter {
       this.isLoading = true;
       const profileData = await predictApiService.fetchUserProfile();
 
-      // Konversi timestamp Firebase ke ISO string
-      const timestampSeconds = profileData.faceShape?.updatedAt?._seconds;
-      const timestampDate = timestampSeconds
-        ? new Date(timestampSeconds * 1000).toISOString()
+      // Cek apakah ada data yang valid
+      if (!profileData || (!profileData.faceShape && !profileData.skinTone)) {
+        console.warn("⚠️ No profile data available");
+        this.lastAnalysis = null;
+        return;
+      }
+
+      // Konversi timestamp Firebase ke ISO string - prioritas ke updatedAt terbaru
+      let latestTimestamp = null;
+      
+      if (profileData.faceShape?.updatedAt?._seconds) {
+        latestTimestamp = profileData.faceShape.updatedAt._seconds;
+      }
+      
+      if (profileData.skinTone?.updatedAt?._seconds) {
+        const skinToneTimestamp = profileData.skinTone.updatedAt._seconds;
+        if (!latestTimestamp || skinToneTimestamp > latestTimestamp) {
+          latestTimestamp = skinToneTimestamp;
+        }
+      }
+
+      const timestampDate = latestTimestamp
+        ? new Date(latestTimestamp * 1000).toISOString()
         : new Date().toISOString();
 
+      // Mapping data sesuai struktur API response yang sebenarnya
       this.lastAnalysis = {
-        id: profileData.faceShape?.uid ?? "latest",
-        faceShape: profileData.faceShape?.predicted_face_shape ?? "Unknown",
-        skinTone: profileData.skinTone?.skin_tone ?? "Unknown",
+        id: profileData.faceShape?.uid || profileData.skinTone?.uid || "latest",
+        faceShape: profileData.faceShape?.predicted_face_shape || "Unknown",
+        skinTone: profileData.skinTone?.color_recommendation?.skin_tone || "Unknown",
         confidence: profileData.faceShape?.confidence
           ? `${Math.round(profileData.faceShape.confidence * 100)}%`
           : "N/A",
         date: timestampDate,
-        colorGroups:
-          profileData.skinTone?.color_recommendation?.recommended_groups?.map(
-            (g) => g.group
-          ) ?? [],
-        recommendations:
-          profileData.faceShape?.hijabRecomendation?.recommendations ?? [],
+        
+        // Color groups dari skin tone recommendation
+        colorGroups: profileData.skinTone?.color_recommendation?.recommended_groups?.map(
+          (group) => group.group
+        ) || [],
+        
+        // Recommendations dari face shape
+        recommendations: profileData.faceShape?.hijabRecomendation?.recommendations || [],
+        
+        // Data tambahan untuk detail
+        allProbabilities: profileData.faceShape?.all_probabilities || {},
+        totalRecommendations: profileData.faceShape?.hijabRecomendation?.total_recommendations || 0,
+        recommendedGroups: profileData.skinTone?.color_recommendation?.recommended_groups || [],
+        
+        // Data user
+        userInfo: {
+          uid: profileData.user?.uid || "",
+          email: profileData.user?.email || "",
+          displayName: profileData.user?.displayName || "",
+        }
       };
 
-      console.log("✅ Profile data loaded:", this.lastAnalysis);
     } catch (error) {
       console.error("❌ Error fetching profile:", error);
       this.lastAnalysis = null;
@@ -72,8 +105,27 @@ export class ProfilePresenter {
   }
 
   handleViewAnalysis(analysisId) {
-    // Navigate to analysis results page
-    this.navigate(`/results/${analysisId}`);
+    // Navigate ke combined results dengan data analysis
+    this.navigate("/combined-results", {
+      state: {
+        analysisResults: {
+          faceShape: {
+            type: this.lastAnalysis.faceShape,
+            confidence: parseFloat(this.lastAnalysis.confidence.replace('%', '')) / 100,
+            allProbabilities: this.lastAnalysis.allProbabilities,
+            recommendations: this.lastAnalysis.recommendations,
+            description: `Recommended hijab styles for ${this.lastAnalysis.faceShape} face.`,
+          },
+          skinTone: {
+            type: this.lastAnalysis.skinTone,
+            recommendedGroups: this.lastAnalysis.recommendedGroups,
+            confidence: 0.8,
+          },
+          timestamp: this.lastAnalysis.date,
+        },
+        originalImage: null, // Tidak ada gambar tersimpan
+      },
+    });
   }
 
   formatDate(dateString) {
@@ -98,7 +150,23 @@ export class ProfilePresenter {
   }
 
   getToneInitial(skinTone) {
-    return skinTone ? skinTone.charAt(0).toUpperCase() : "S";
+    if (!skinTone) return "S";
+    // Handle "mid dark" case dari API
+    const words = skinTone.split(" ");
+    if (words.length > 1) {
+      return words.map(word => word.charAt(0).toUpperCase()).join("");
+    }
+    return skinTone.charAt(0).toUpperCase();
+  }
+
+  // Helper untuk format skin tone display
+  formatSkinTone(skinTone) {
+    if (!skinTone) return "Unknown";
+    // Capitalize each word: "mid dark" -> "Mid Dark"
+    return skinTone
+      .split(" ")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   }
 }
 
@@ -115,7 +183,7 @@ export const useProfilePresenter = () => {
   // Initialize presenter
   useEffect(() => {
     presenter.init(navigate, toast, authContext);
-  }, [navigate, toast, authContext]);
+  }, [navigate, toast, authContext, presenter]);
 
   // Load data when user is available
   useEffect(() => {
@@ -140,5 +208,6 @@ export const useProfilePresenter = () => {
     formatTime: (time) => presenter.formatTime(time),
     getShapeInitial: (shape) => presenter.getShapeInitial(shape),
     getToneInitial: (tone) => presenter.getToneInitial(tone),
+    formatSkinTone: (tone) => presenter.formatSkinTone(tone),
   };
 };

@@ -55,7 +55,6 @@ export class ForgotPasswordPresenter {
         description: "Check your email for password reset instructions.",
       });
 
-      console.log("✅ Password reset email sent to:", this.email);
     } catch (error) {
       console.error("❌ Password reset error:", error);
       

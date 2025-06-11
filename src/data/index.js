@@ -1,5 +1,4 @@
 // Centralized data exports
-export { mockUsers, mockUploadedImage } from './mockData.js';
 export { 
   getGroupDisplayName, 
   getYouTubeVideoId, 
