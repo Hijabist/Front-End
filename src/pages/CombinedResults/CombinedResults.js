@@ -27,8 +27,25 @@ export default function CombinedResults() {
     shareResults,
     getGroupDisplayName,
     getYouTubeThumbnail,
-    getYouTubeEmbedUrl,
-  } = useCombinedResultsPresenter()
+    getYouTubeEmbedUrl,  } = useCombinedResultsPresenter()
+
+  // Loading state jika data belum tersedia
+  if (!faceShapeData || !skinToneData) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-1 container max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading analysis results...</p>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -95,9 +112,8 @@ export default function CombinedResults() {
                   <h3 className="text-base sm:text-lg lg:text-xl font-semibold capitalize leading-tight">
                     <span className="block sm:inline">{faceShapeData.result.predicted_face_shape}</span>
                     <span className="block sm:inline sm:ml-1">Face Shape</span>
-                  </h3>
-                  <p className="text-rose-600 font-medium text-sm sm:text-base lg:text-lg mt-2">
-                    Confidence: {faceShapeData.result.confidence}
+                  </h3>                  <p className="text-rose-600 font-medium text-sm sm:text-base lg:text-lg mt-2">
+                    Confidence: {(faceShapeData.result.confidence * 100).toFixed(2)}%
                   </p>
                 </div>
                 <div className="text-center">
@@ -223,8 +239,7 @@ export default function CombinedResults() {
               <CardTitle className="flex items-center gap-2 text-lg lg:text-xl">
                 <Play className="h-4 w-4 lg:h-5 lg:w-5 text-rose-500" />
                 Tutorial Videos
-              </CardTitle>
-              <CardDescription className="text-sm lg:text-base">
+              </CardTitle>              <CardDescription className="text-sm lg:text-base">
                 {faceShapeData.result.hijabRecomendation.total_recommendations} curated video tutorials perfect for your{" "}
                 {faceShapeData.result.hijabRecomendation.face_shape.toLowerCase()} face shape
               </CardDescription>
@@ -326,8 +341,7 @@ export default function CombinedResults() {
                 />
               </div>
             )}
-            <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <p className="text-xs sm:text-sm text-gray-600">
+            <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">              <p className="text-xs sm:text-sm text-gray-600">
                 Perfect for your {faceShapeData.result.predicted_face_shape} face shape
               </p>
               <a

@@ -18,7 +18,6 @@ export default function Register() {
     updateEmail,
     updatePassword,
     handleRegister,
-    isFormValid,
     passwordStrength
   } = useRegisterPresenter()
 

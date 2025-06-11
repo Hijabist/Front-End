@@ -5,11 +5,18 @@ import { cn } from "../../lib/utils"
 
 const TabsContext = createContext()
 
-const Tabs = ({ defaultValue, className, children, ...props }) => {
+const Tabs = ({ defaultValue, className, children, onValueChange, ...props }) => {
   const [activeTab, setActiveTab] = useState(defaultValue)
 
+  const handleTabChange = (value) => {
+    setActiveTab(value)
+    if (onValueChange) {
+      onValueChange(value)
+    }
+  }
+
   return (
-    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+    <TabsContext.Provider value={{ activeTab, setActiveTab: handleTabChange }}>
       <div className={cn("w-full", className)} {...props}>
         {children}
       </div>

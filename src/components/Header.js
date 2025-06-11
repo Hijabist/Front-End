@@ -39,10 +39,11 @@ export default function Header({ showLogout = false }) {
       description: "You have been logged out successfully.",
     });
   };
-
   const getUserInitials = () => {
-    if (!user || !user.name) return "G";
-    return user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+    if (!user) return "G";
+    const name = user.displayName || user.email;
+    if (!name) return "G";
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
   return (
@@ -96,9 +97,8 @@ export default function Header({ showLogout = false }) {
                 {/* User Profile Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.avatar} alt={user?.name || "User"} />
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.avatar} alt={user?.displayName || user?.email || "User"} />
                       <AvatarFallback className="bg-rose-100 text-rose-600">
                         {getUserInitials()}
                       </AvatarFallback>
@@ -108,9 +108,9 @@ export default function Header({ showLogout = false }) {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user?.name || "Guest"}</p>
+                      <p className="text-sm font-medium leading-none">{user?.displayName || user?.email || "Guest"}</p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        @{user?.username || "guest"}
+                        {user?.email || "guest@example.com"}
                       </p>
                     </div>
                   </DropdownMenuLabel>
@@ -119,12 +119,6 @@ export default function Header({ showLogout = false }) {
                     <Link to="/profile" className="cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
                       <span>Profile</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile?tab=settings" className="cursor-pointer">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

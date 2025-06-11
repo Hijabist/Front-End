@@ -47,9 +47,7 @@ export class LoginPresenter {
       this.toast({
         title: "Signing in...",
         description: "Please wait while we authenticate you.",
-      });
-
-      const emailStr = String(this.email).trim();
+      });      const emailStr = String(this.email).trim();
       const passwordStr = String(this.password).trim();
 
       const userData = await this.authContext.login(emailStr, passwordStr);
@@ -63,7 +61,7 @@ export class LoginPresenter {
 
       this.toast({
         title: "Login successful!",
-        description: `Welcome back, ${userData?.name || userData?.email || 'User'}!`,
+        description: `Welcome back, ${userData?.displayName || userData?.email || 'User'}!`,
       });
 
       setTimeout(() => {

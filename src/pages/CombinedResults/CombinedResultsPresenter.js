@@ -1,27 +1,21 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useToast } from "../../hooks/use-toast"
-import { 
-  faceShapeData as initialFaceShapeData, 
-  skinToneData as initialSkinToneData,
-  mockUploadedImage,
+import {
   getGroupDisplayName,
-  getYouTubeVideoId,
   getYouTubeEmbedUrl,
   getYouTubeThumbnail
 } from "../../data"
 
 class CombinedResultsPresenter {
-  constructor(navigate, toast) {
+  constructor(navigate, toast, location) {
     this.navigate = navigate
     this.toast = toast
+    this.location = location
     this.init()
   }
 
   init() {
-    this.faceShapeData = initialFaceShapeData
-    this.skinToneData = initialSkinToneData
-    this.uploadedImage = null
     this.isSaved = false
     this.isLoggedIn = false
     this.selectedVideo = null
@@ -29,22 +23,68 @@ class CombinedResultsPresenter {
     this.sortedProbabilities = []
 
     this.checkAuthAndLoadData()
-    this.calculateSortedProbabilities()
   }
 
   checkAuthAndLoadData() {
-    // Check if user is logged in
     const currentUser = JSON.parse(localStorage.getItem("currentUser"))
     this.isLoggedIn = !!currentUser
 
-    // Set uploaded image from mock data
-    this.uploadedImage = mockUploadedImage
-  }
+    const state = this.location.state
+    if (!state || !state.analysisResults) {
+      this.toast({
+        variant: "destructive",
+        title: "No analysis data",
+        description: "Please analyze an image first."
+      })
+      this.navigate("/analysis")
+      return    }    const { analysisResults, originalImage } = state
+    
+    console.log("📊 Received analysis results:", analysisResults)
+    
+    // Validasi data sebelum mapping
+    if (!analysisResults?.faceShape || !analysisResults?.skinTone) {
+      this.toast({
+        variant: "destructive",
+        title: "Invalid analysis data",
+        description: "Analysis data is incomplete. Please try analyzing again."
+      })
+      this.navigate("/analysis")
+      return
+    }
+    
+    // Map data structure dari API ke format yang digunakan di UI
+    this.faceShapeData = {
+      result: {
+        predicted_face_shape: analysisResults.faceShape.type || "unknown",
+        confidence: analysisResults.faceShape.confidence || 0,
+        all_probabilities: analysisResults.faceShape.allProbabilities || {},
+        hijabRecomendation: {
+          recommendations: analysisResults.faceShape.recommendations || [],
+          total_recommendations: (analysisResults.faceShape.recommendations || []).length,
+          face_shape: analysisResults.faceShape.type || "unknown"
+        }
+      }
+    }
+    
+    this.skinToneData = {
+      skin_tone: analysisResults.skinTone.type || "unknown",
+      recommended_groups: analysisResults.skinTone.recommendedGroups || [],
+      confidence: analysisResults.skinTone.confidence || 0
+    }
+    
+    this.uploadedImage = originalImage
 
+    this.calculateSortedProbabilities()
+  }
   calculateSortedProbabilities() {
-    this.sortedProbabilities = Object.entries(this.faceShapeData.result.all_probabilities).sort(
-      ([, a], [, b]) => b.probability - a.probability,
-    )
+    if (this.faceShapeData?.result?.all_probabilities) {
+      this.sortedProbabilities = Object.entries(this.faceShapeData.result.all_probabilities).sort(
+        ([, a], [, b]) => b.probability - a.probability,
+      )
+    } else {
+      console.warn("No face shape probabilities found")
+      this.sortedProbabilities = []
+    }
   }
 
   handleVideoClick(url) {
@@ -74,10 +114,7 @@ class CombinedResultsPresenter {
       return
     }
 
-    // Get current user
     const currentUser = JSON.parse(localStorage.getItem("currentUser"))
-
-    // Create analysis object
     const analysisData = {
       id: Date.now().toString(),
       date: Date.now(),
@@ -88,7 +125,6 @@ class CombinedResultsPresenter {
       recommendations: this.faceShapeData.result.hijabRecomendation.recommendations,
     }
 
-    // Update user data in localStorage
     const users = JSON.parse(localStorage.getItem("users") || "[]")
     const updatedUsers = users.map((u) => {
       if (u.id === currentUser.id) {
@@ -115,7 +151,6 @@ class CombinedResultsPresenter {
   }
 
   shareResults() {
-    // Implement share functionality
     if (navigator.share) {
       navigator.share({
         title: "My Hijab Analysis Results",
@@ -123,7 +158,6 @@ class CombinedResultsPresenter {
         url: window.location.href,
       })
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href)
       this.toast({
         title: "Link copied",
@@ -149,8 +183,8 @@ export function useCombinedResultsPresenter() {
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
-  
-  const [presenter] = useState(() => new CombinedResultsPresenter(navigate, toast))
+
+  const [presenter] = useState(() => new CombinedResultsPresenter(navigate, toast, location))
   const [, forceUpdate] = useState({})
 
   const triggerUpdate = () => forceUpdate({})
@@ -159,9 +193,31 @@ export function useCombinedResultsPresenter() {
     presenter.update = triggerUpdate
   }, [presenter])
 
+  // Pastikan data ter-load dengan benar
+  if (!presenter.faceShapeData || !presenter.skinToneData) {
+    return {
+      presenter: null,
+      faceShapeData: null,
+      skinToneData: null,
+      uploadedImage: null,
+      isSaved: false,
+      isLoggedIn: false,
+      selectedVideo: null,
+      showVideoModal: false,
+      sortedProbabilities: [],
+      handleVideoClick: () => {},
+      closeVideoModal: () => {},
+      handleSaveAnalysis: () => {},
+      navigateToAnalysis: () => {},
+      shareResults: () => {},
+      getGroupDisplayName: () => "",
+      getYouTubeThumbnail: () => "",
+      getYouTubeEmbedUrl: () => "",
+    }
+  }
+
   return {
     presenter,
-    // Data getters
     faceShapeData: presenter.faceShapeData,
     skinToneData: presenter.skinToneData,
     uploadedImage: presenter.uploadedImage,
@@ -170,8 +226,7 @@ export function useCombinedResultsPresenter() {
     selectedVideo: presenter.selectedVideo,
     showVideoModal: presenter.showVideoModal,
     sortedProbabilities: presenter.sortedProbabilities,
-    
-    // Action methods
+
     handleVideoClick: (url) => {
       presenter.handleVideoClick(url)
       triggerUpdate()
@@ -186,8 +241,7 @@ export function useCombinedResultsPresenter() {
     },
     navigateToAnalysis: () => presenter.navigateToAnalysis(),
     shareResults: () => presenter.shareResults(),
-    
-    // Utility methods
+
     getGroupDisplayName: presenter.getGroupDisplayName.bind(presenter),
     getYouTubeThumbnail: presenter.getYouTubeThumbnail.bind(presenter),
     getYouTubeEmbedUrl: presenter.getYouTubeEmbedUrl.bind(presenter),
