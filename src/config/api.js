@@ -7,6 +7,7 @@ const ENDPOINTS = {
   REGISTER: `${CONFIG.BASE_URL}/auth/register`,
   PREDICT_FACE_SHAPE: `${CONFIG.BASE_URL}/predict/face-shape`,
   PREDICT_SKIN_TONE: `${CONFIG.BASE_URL}/predict/skin-tone`,
+  AUTH_PROFILE: `${CONFIG.BASE_URL}/auth/profile`,
 };
 
 export { CONFIG, ENDPOINTS };

@@ -34,7 +34,9 @@ export class PredictApiService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Face shape prediction failed: ${response.status} - ${errorText}`);
+        throw new Error(
+          `Face shape prediction failed: ${response.status} - ${errorText}`
+        );
       }
 
       const json = await response.json();
@@ -68,7 +70,9 @@ export class PredictApiService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Skin tone prediction failed: ${response.status} - ${errorText}`);
+        throw new Error(
+          `Skin tone prediction failed: ${response.status} - ${errorText}`
+        );
       }
 
       const json = await response.json();
@@ -112,6 +116,33 @@ export class PredictApiService {
       return result;
     } catch (error) {
       console.error("❌ Combined analysis error:", error);
+      throw error;
+    }
+  }
+
+  async fetchUserProfile() {
+    try {
+      const token = await this.getAuthToken();
+
+      const response = await fetch(ENDPOINTS.AUTH_PROFILE, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Profile fetch failed: ${response.status} - ${errorText}`
+        );
+      }
+
+      const json = await response.json();
+      return json.result || json;
+    } catch (error) {
+      console.error("❌ Profile fetch error:", error);
       throw error;
     }
   }

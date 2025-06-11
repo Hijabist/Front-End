@@ -1,5 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useRef, useState, useEffect } from "react";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -10,7 +9,6 @@ import {
 } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
 import {
-  Camera,
   Upload,
   X,
   Loader2,
@@ -24,115 +22,67 @@ import Footer from "../../components/Footer";
 import { useAnalysisPresenter } from "./AnalysisPresenter";
 
 export default function Analysis() {
-  const location = useLocation();
-  const navigate = useNavigate();
-
   const {
     selectedImage,
     imagePreview,
     isAnalyzing,
     isLoading,
-    isCameraOpen,
-    captureMode,
-    setCaptureMode,
-    openCamera,
-    closeCamera,
-    capturePhoto,
     handleFileUpload,
     removeImage,
     analyzeImage,
-    isCameraSupported,
     resetAnalysis,
     getAnalysisProgress,
+    setCaptureMode,
   } = useAnalysisPresenter();
 
+  const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const streamRef = useRef(null);
+  const [cameraActive, setCameraActive] = useState(false);
 
-  // Handle camera stream setup
+  // ✅ Atur kamera berdasarkan state cameraActive dan saat komponen unmount
   useEffect(() => {
-    if (isCameraOpen && videoRef.current && !videoRef.current.srcObject) {
-      openCamera().then((stream) => {
-        videoRef.current.srcObject = streamRef.current;
+    let localStream;
 
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current
-            .play()
-            .then(() => {
-            })
-            .catch((error) => {
-              console.error("Error playing video:", error); // ✅ log 8
-            });
-        };
-      });
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        localStream = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current.play();
+          };
+        }
+      } catch (err) {
+        console.error("Camera access error:", err);
+        alert("Camera access failed. Please allow camera permission.");
+      }
+    };
+
+    if (cameraActive) {
+      startCamera();
     }
-  }, [isCameraOpen]);
-
-  // Cleanup camera when component unmounts or navigates
-  useEffect(() => {
-    const cleanup = () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden && isCameraOpen) {
-        cleanup();
-        closeCamera();
-      }
-    };
-
-    const handleBeforeUnload = () => {
-      cleanup();
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      cleanup();
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [isCameraOpen, closeCamera]);
-
-  // Additional cleanup for route changes
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      if (videoRef.current) {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const tracks = videoRef.current.srcObject.getTracks();
+        tracks.forEach((track) => track.stop());
         videoRef.current.srcObject = null;
       }
+      if (localStream) {
+        localStream.getTracks().forEach((track) => track.stop());
+      }
     };
-  }, [location.pathname]);
-
-  const handleCaptureClick = () => {
-    if (videoRef.current && canvasRef.current) {
-      capturePhoto(videoRef.current, canvasRef.current);
-      // Close camera after capture
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-    }
-  };
+  }, [cameraActive]);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      setCaptureMode("upload");
       handleFileUpload(file);
     }
   };
@@ -141,44 +91,33 @@ export default function Analysis() {
     fileInputRef.current?.click();
   };
 
-  const handleOpenCamera = async () => {
+  const handleActivateCamera = () => {
     setCaptureMode("camera");
-    try {
-      const stream = await openCamera();
-      streamRef.current = stream;
+    setCameraActive(true);
+  };
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current
-            .play()
-            .then(() => {
-              console.log("Video playing...");
-            })
-            .catch((error) => {
-              console.error("Error playing video:", error);
-            });
-        };
+  const stopCamera = () => {
+    setCameraActive(false);
+  };
+
+  const captureImage = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    if (!video || !canvas) return;
+
+    const context = canvas.getContext("2d");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], "captured.jpg", { type: "image/jpeg" });
+        handleFileUpload(file);
+        stopCamera();
       }
-    } catch (error) {
-      console.error("Failed to open camera:", error);
-    }
-  };
-
-  const handleCloseCamera = () => {
-    closeCamera();
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  const handleChooseUpload = () => {
-    setCaptureMode("upload");
-    openFileDialog();
+    }, "image/jpeg");
   };
 
   return (
@@ -190,156 +129,85 @@ export default function Analysis() {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-4">AI Color Analysis</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Capture or upload your photo to get personalized hijab color
-              recommendations based on your face shape and skin tone analysis
+              Upload your photo or take a picture to get personalized hijab
+              color recommendations based on your face shape and skin tone
+              analysis.
             </p>
           </div>
 
-          {/* Photo Capture Options - Only show when no image selected */}
-          {!selectedImage && !isCameraOpen && (
+          {/* Upload vs Kamera Pilihan */}
+          {!selectedImage && !cameraActive && (
             <Card className="mb-8">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-rose-400" />
-                  Choose Photo Method
+                  Choose Image Source
                 </CardTitle>
                 <CardDescription>
-                  Select one method to provide your photo for analysis
+                  Upload from gallery or use your camera
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Camera Option */}
-                  <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-rose-400 transition-colors">
-                    <Camera className="h-16 w-16 text-rose-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">Take a Photo</h3>
-                    <p className="text-muted-foreground mb-6 text-sm">
-                      Use your device camera to capture a photo for analysis
-                    </p>
-                    {!isCameraSupported() ? (
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
-                        <p className="text-xs text-yellow-800">
-                          Camera is not available on this device
-                        </p>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={handleOpenCamera}
-                        disabled={isLoading || !isCameraSupported()}
-                        className="bg-rose-400 hover:bg-rose-500 w-full"
-                      >
-                        {isLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Opening Camera...
-                          </>
-                        ) : (
-                          <>
-                            <Camera className="h-4 w-4 mr-2" />
-                            Open Camera
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Upload Option */}
-                  <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-rose-400 transition-colors">
-                    <Upload className="h-16 w-16 text-rose-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">
-                      Upload Your Photo
-                    </h3>
-                    <p className="text-muted-foreground mb-6 text-sm">
-                      Select a clear photo from your device gallery for analysis
-                    </p>
+                <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-rose-400 transition-colors">
+                  <Upload className="h-16 w-16 text-rose-400 mx-auto mb-4" />
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Button
-                      onClick={handleChooseUpload}
-                      className="bg-rose-400 hover:bg-rose-500 w-full"
+                      onClick={openFileDialog}
+                      className="bg-rose-400 hover:bg-rose-500 flex-1"
                     >
                       <Upload className="h-4 w-4 mr-2" />
-                      Choose Photo
+                      Upload Photo
                     </Button>
-                    <p className="text-xs text-muted-foreground mt-3">
-                      Supported formats: JPG, PNG, WEBP (Max: 10MB)
-                    </p>
+                    <Button
+                      onClick={handleActivateCamera}
+                      className="bg-blue-500 hover:bg-blue-600 flex-1"
+                    >
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      Capture with Camera
+                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Supported formats: JPG, PNG, WEBP (Max: 10MB)
+                  </p>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Camera View */}
-          {isCameraOpen && !selectedImage && (
+          {/* Kamera Aktif */}
+          {cameraActive && (
             <Card className="mb-8">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Camera className="h-5 w-5 text-rose-400" />
-                  Camera
+                  <ImageIcon className="h-5 w-5 text-blue-500" />
+                  Camera Preview
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="relative bg-black rounded-lg overflow-hidden mx-auto max-w-md">
-                    <video
-                      key={isCameraOpen}
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      width="640"
-                      height="480"
-                      style={{
-                        width: "100%",
-                        height: "auto",
-                        aspectRatio: "4/3",
-                        objectFit: "cover",
-                        transform: "scaleX(-1)",
-                        borderRadius: "8px",
-                      }}
-                    />
-
-                    <canvas ref={canvasRef} className="hidden" />
-
-                    {/* Camera overlay guide */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="border-2 border-white border-dashed rounded-full w-32 h-32 md:w-48 md:h-48 opacity-75"></div>
-                    </div>
-
-                    {/* Instruction overlay */}
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-xs md:text-sm bg-black bg-opacity-60 px-3 py-2 rounded-lg">
-                      Position your face in the circle
-                    </div>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Position your face in the center and ensure good lighting
-                      for best results
-                    </p>
-                    <div className="flex flex-col sm:flex-row justify-center gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={handleCloseCamera}
-                        className="order-2 sm:order-1"
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Close Camera
-                      </Button>
-                      <Button
-                        onClick={handleCaptureClick}
-                        className="bg-rose-400 hover:bg-rose-500 order-1 sm:order-2"
-                      >
-                        <Camera className="h-4 w-4 mr-2" />
-                        Capture Photo
-                      </Button>
-                    </div>
-                  </div>
+              <CardContent className="flex flex-col items-center">
+                <video
+                  ref={videoRef}
+                  className="rounded-lg shadow-md mb-4 w-full max-w-md h-auto"
+                  autoPlay
+                  playsInline
+                  muted
+                />
+                <div className="flex gap-4">
+                  <Button
+                    onClick={captureImage}
+                    className="bg-green-500 hover:bg-green-600"
+                  >
+                    📸 Capture
+                  </Button>
+                  <Button variant="outline" onClick={stopCamera}>
+                    Cancel
+                  </Button>
                 </div>
+                <canvas ref={canvasRef} className="hidden" />
               </CardContent>
             </Card>
           )}
 
-          {/* Selected Image Preview with Analysis Button */}
+          {/* Gambar yang sudah dipilih */}
           {selectedImage && imagePreview && (
             <Card className="mb-8">
               <CardHeader>
@@ -355,18 +223,11 @@ export default function Analysis() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col items-center">
-                  <div className="relative">
-                    <img
-                      src={imagePreview}
-                      alt="Selected for analysis"
-                      className="max-w-sm w-full rounded-lg shadow-md mb-4 border-2 border-gray-200"
-                    />
-                    {/* Image quality indicator */}
-                    <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                      Ready for Analysis
-                    </div>
-                  </div>
-
+                  <img
+                    src={imagePreview}
+                    alt="Selected for analysis"
+                    className="max-w-sm w-full rounded-lg shadow-md mb-4 border-2 border-gray-200"
+                  />
                   <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
                     <Button
                       variant="outline"
@@ -399,35 +260,31 @@ export default function Analysis() {
             </Card>
           )}
 
-          {/* Analysis Progress */}
+          {/* Progress */}
           {isAnalyzing && (
             <Card className="mb-8">
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <div className="flex justify-center mb-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-rose-400" />
-                  </div>
+                  <Loader2 className="h-8 w-8 animate-spin text-rose-400 mb-4 mx-auto" />
                   <h3 className="text-lg font-medium mb-2">
                     AI Analysis in Progress
                   </h3>
                   <p className="text-muted-foreground mb-4">
-                    Our advanced AI is analyzing your face shape and skin tone
-                    to provide personalized hijab color recommendations...
+                    Analyzing your face shape and skin tone...
                   </p>
                   <Progress
                     value={getAnalysisProgress()}
                     className="w-full max-w-md mx-auto mb-2"
                   />
                   <p className="text-sm text-muted-foreground">
-                    {getAnalysisProgress()}% complete • Processing image
-                    features
+                    {getAnalysisProgress()}% complete
                   </p>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Tips Section */}
+          {/* Tips */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -437,27 +294,25 @@ export default function Analysis() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
+                <div>
                   <h4 className="font-medium">Lighting</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li>• Use bright natural light</li>
-                    <li>• Avoid direct harsh lighting</li>
-                    <li>• Ensure face is not covered by shadows</li>
+                    <li>• Avoid harsh shadows</li>
                   </ul>
                 </div>
-                <div className="space-y-3">
+                <div>
                   <h4 className="font-medium">Photo Position</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Face directly towards the camera</li>
-                    <li>• Distance about 30-50 cm from camera</li>
-                    <li>• Ensure face is clear and in focus</li>
+                    <li>• Face camera directly</li>
+                    <li>• Stay 30–50cm from camera</li>
                   </ul>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Hidden file input */}
+          {/* Hidden input */}
           <input
             ref={fileInputRef}
             type="file"

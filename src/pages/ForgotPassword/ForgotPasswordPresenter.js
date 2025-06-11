@@ -1,125 +1,141 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { useToast } from "../../hooks/use-toast"
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../../hooks/use-toast";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../../firebase";
 
 export class ForgotPasswordPresenter {
   constructor() {
-    this.navigate = null
-    this.toast = null
-    this.email = ""
-    this.isLoading = false
-    this.emailSent = false
-    this.setEmail = null
-    this.setIsLoading = null
-    this.setEmailSent = null
+    this.email = "";
+    this.isLoading = false;
+    this.isEmailSent = false;
   }
 
-  init(navigate, toast, setEmail, setIsLoading, setEmailSent) {
-    this.navigate = navigate
-    this.toast = toast
-    this.setEmail = setEmail
-    this.setIsLoading = setIsLoading
-    this.setEmailSent = setEmailSent
+  init(navigate, toast) {
+    this.navigate = navigate;
+    this.toast = toast;
   }
 
-  updateEmail(email) {
-    this.email = email
-    this.setEmail(email)
+  setEmail(email) {
+    this.email = email;
   }
 
-  isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
+  validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   }
 
-  async handleResetPassword(e) {
-    e.preventDefault()
-    
-    if (!this.isValidEmail(this.email)) {
+  async sendResetEmail() {
+    if (!this.email.trim()) {
       this.toast({
         variant: "destructive",
-        title: "Invalid email",
-        description: "Please enter a valid email address."
-      })
-      return
+        title: "Email Required",
+        description: "Please enter your email address.",
+      });
+      return;
     }
 
-    this.setIsLoading(true)
-
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        try {
-          const users = JSON.parse(localStorage.getItem("users") || "[]")
-          const userExists = users.some(user => user.email === this.email)
-
-          if (userExists) {
-            // Generate reset token (in real app, this would be done server-side)
-            const resetToken = Math.random().toString(36).substring(2, 15)
-            localStorage.setItem("resetToken", JSON.stringify({
-              email: this.email,
-              token: resetToken,
-              expires: Date.now() + 3600000 // 1 hour
-            }))
-
-            this.setEmailSent(true)
-            this.toast({
-              title: "Reset email sent",
-              description: "Check your email for password reset instructions."
-            })
-          } else {
-            this.toast({
-              variant: "destructive", 
-              title: "Email not found",
-              description: "No account found with this email address."
-            })
-          }
-        } catch (error) {
-          this.toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to send reset email. Please try again."
-          })
-        }
-
-        this.setIsLoading(false)
-        resolve()
-      }, 1000)
-    })
-  }
-
-  goToLogin() {
-    this.navigate("/login")
-  }
-
-  goToResetPassword() {
-    // In a real app, this would come from the email link
-    const resetData = JSON.parse(localStorage.getItem("resetToken") || "{}")
-    if (resetData.token) {
-      this.navigate(`/reset-password?token=${resetData.token}`)
+    if (!this.validateEmail(this.email)) {
+      this.toast({
+        variant: "destructive",
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+      });
+      return;
     }
+
+    this.isLoading = true;
+
+    try {
+      await sendPasswordResetEmail(auth, this.email);
+      
+      this.isEmailSent = true;
+      this.toast({
+        title: "Reset Email Sent",
+        description: "Check your email for password reset instructions.",
+      });
+
+      console.log("✅ Password reset email sent to:", this.email);
+    } catch (error) {
+      console.error("❌ Password reset error:", error);
+      
+      let errorMessage = "Failed to send reset email. Please try again.";
+      
+      switch (error.code) {
+        case "auth/user-not-found":
+          errorMessage = "No account found with this email address.";
+          break;
+        case "auth/invalid-email":
+          errorMessage = "Invalid email address.";
+          break;
+        case "auth/too-many-requests":
+          errorMessage = "Too many requests. Please try again later.";
+          break;
+        default:
+          errorMessage = error.message || errorMessage;
+      }
+
+      this.toast({
+        variant: "destructive",
+        title: "Reset Failed",
+        description: errorMessage,
+      });
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  handleBackToLogin() {
+    this.navigate("/login");
+  }
+
+  handleResendEmail() {
+    this.isEmailSent = false;
+    this.sendResetEmail();
   }
 }
 
 export const useForgotPasswordPresenter = () => {
-  const [email, setEmail] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [emailSent, setEmailSent] = useState(false)
-  const navigate = useNavigate()
-  const { toast } = useToast()
-  const [presenter] = useState(() => new ForgotPasswordPresenter())
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
+
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const [presenter] = useState(() => new ForgotPasswordPresenter());
 
   // Initialize presenter
-  presenter.init(navigate, toast, setEmail, setIsLoading, setEmailSent)
+  presenter.init(navigate, toast);
+  presenter.email = email;
+  presenter.isLoading = isLoading;
+  presenter.isEmailSent = isEmailSent;
 
   return {
     email,
     isLoading,
-    emailSent,
-    updateEmail: (email) => presenter.updateEmail(email),
-    handleResetPassword: (e) => presenter.handleResetPassword(e),
-    goToLogin: () => presenter.goToLogin(),
-    goToResetPassword: () => presenter.goToResetPassword(),
-    isFormValid: presenter.isValidEmail(presenter.email)
-  }
-}
+    isEmailSent,
+    
+    setEmail: (newEmail) => {
+      setEmail(newEmail);
+      presenter.setEmail(newEmail);
+    },
+
+    sendResetEmail: async () => {
+      setIsLoading(true);
+      await presenter.sendResetEmail();
+      setIsLoading(presenter.isLoading);
+      setIsEmailSent(presenter.isEmailSent);
+    },
+
+    handleBackToLogin: () => presenter.handleBackToLogin(),
+    
+    handleResendEmail: async () => {
+      setIsEmailSent(false);
+      setIsLoading(true);
+      await presenter.handleResendEmail();
+      setIsLoading(presenter.isLoading);
+      setIsEmailSent(presenter.isEmailSent);
+    },
+  };
+};

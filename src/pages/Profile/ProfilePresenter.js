@@ -2,17 +2,54 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/use-toast";
-
+import { predictApiService } from "../../data/remote/predictApi";
 
 export class ProfilePresenter {
   constructor() {
     this.lastAnalysis = null;
     this.isLoading = true;
   }
+
   init(navigate, toast, authContext) {
     this.navigate = navigate;
     this.toast = toast;
     this.authContext = authContext;
+  }
+  
+  async loadSavedAnalyses() {
+    try {
+      this.isLoading = true;
+      const profileData = await predictApiService.fetchUserProfile();
+
+      // Konversi timestamp Firebase ke ISO string
+      const timestampSeconds = profileData.faceShape?.updatedAt?._seconds;
+      const timestampDate = timestampSeconds
+        ? new Date(timestampSeconds * 1000).toISOString()
+        : new Date().toISOString();
+
+      this.lastAnalysis = {
+        id: profileData.faceShape?.uid ?? "latest",
+        faceShape: profileData.faceShape?.predicted_face_shape ?? "Unknown",
+        skinTone: profileData.skinTone?.skin_tone ?? "Unknown",
+        confidence: profileData.faceShape?.confidence
+          ? `${Math.round(profileData.faceShape.confidence * 100)}%`
+          : "N/A",
+        date: timestampDate,
+        colorGroups:
+          profileData.skinTone?.color_recommendation?.recommended_groups?.map(
+            (g) => g.group
+          ) ?? [],
+        recommendations:
+          profileData.faceShape?.hijabRecomendation?.recommendations ?? [],
+      };
+
+      console.log("✅ Profile data loaded:", this.lastAnalysis);
+    } catch (error) {
+      console.error("❌ Error fetching profile:", error);
+      this.lastAnalysis = null;
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   async handleLogout() {
@@ -33,6 +70,7 @@ export class ProfilePresenter {
       });
     }
   }
+
   handleViewAnalysis(analysisId) {
     // Navigate to analysis results page
     this.navigate(`/results/${analysisId}`);
@@ -61,37 +99,6 @@ export class ProfilePresenter {
 
   getToneInitial(skinTone) {
     return skinTone ? skinTone.charAt(0).toUpperCase() : "S";
-  }  // Load saved analyses and set last analysis
-  loadSavedAnalyses() {
-    // Mock data - replace with actual data loading
-    const analyses = [
-      {
-        id: "1",
-        faceShape: "Oval",
-        skinTone: "Warm",
-        confidence: "85%",
-        date: "2024-01-15T10:30:00Z",
-        colorGroups: ["Earth tones", "Warm colors"],
-        recommendations: [
-          "https://youtube.com/watch?v=example1",
-          "https://youtube.com/watch?v=example2",
-        ],
-      },
-      {
-        id: "2",
-        faceShape: "Round",
-        skinTone: "Cool",
-        confidence: "92%",
-        date: "2024-01-10T14:15:00Z",
-        colorGroups: ["Cool colors", "Jewel tones"],
-        recommendations: ["https://youtube.com/watch?v=example3"],
-      },
-    ];
-
-    // Set the most recent analysis as last analysis
-    if (analyses.length > 0) {
-      this.lastAnalysis = analyses[0]; // Most recent one
-    }
   }
 }
 
@@ -102,25 +109,33 @@ export const useProfilePresenter = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const authContext = useAuth();
-  const presenter = new ProfilePresenter();
-  presenter.lastAnalysis = lastAnalysis;
-  presenter.isLoading = isLoading;
-  presenter.init(navigate, toast, authContext);  // Initialize data when component mounts
+  
+  const [presenter] = useState(() => new ProfilePresenter());
+
+  // Initialize presenter
+  useEffect(() => {
+    presenter.init(navigate, toast, authContext);
+  }, [navigate, toast, authContext]);
+
+  // Load data when user is available
   useEffect(() => {
     if (authContext.user) {
-      // Load saved analyses
-      presenter.loadSavedAnalyses();
-      setLastAnalysis(presenter.lastAnalysis);
-
-      setIsLoading(false);
+      const loadData = async () => {
+        await presenter.loadSavedAnalyses();
+        setLastAnalysis(presenter.lastAnalysis);
+        setIsLoading(presenter.isLoading);
+      };
+      
+      loadData();
     }
-  }, [authContext.user]);  return {
+  }, [authContext.user, presenter]);
+
+  return {
     user: authContext.user,
     lastAnalysis,
     isLoading,
     handleLogout: () => presenter.handleLogout(),
-    handleViewAnalysis: (analysisId) =>
-      presenter.handleViewAnalysis(analysisId),
+    handleViewAnalysis: (analysisId) => presenter.handleViewAnalysis(analysisId),
     formatDate: (date) => presenter.formatDate(date),
     formatTime: (time) => presenter.formatTime(time),
     getShapeInitial: (shape) => presenter.getShapeInitial(shape),
