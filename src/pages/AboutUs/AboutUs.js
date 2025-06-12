@@ -109,7 +109,7 @@ export default function AboutUs() {
                     <img
                       src={member.image || "/placeholder.svg"}
                       alt={member.name}
-                      className="w-full h-full object-fit transition-transform hover:scale-105 duration-300"
+                      className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
                     />
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
                       <h3 className="text-white font-bold text-xl">

@@ -134,19 +134,19 @@ export default function Home() {
                 {
                   name: "Fatima A.",
                   type: "Spring Color Type",
-                  img: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
+                  img: "logo_hijabist.svg",
                   feedback: "I've always struggled to find hijab colors that complement my skin tone. This tool has been a game-changer!"
                 },
                 {
                   name: "Aisha M.",
                   type: "Winter Color Type",
-                  img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
+                  img: "logo_hijabist.svg",
                   feedback: "The color analysis was spot on! I never realized how much the right hijab colors could brighten my complexion."
                 },
                 {
                   name: "Noor H.",
                   type: "Autumn Color Type",
-                  img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
+                  img: "logo_hijabist.svg",
                   feedback: "I've wasted so much money on hijabs that didn't suit me. This tool has saved me time and money."
                 },
               ].map(({ name, type, img, feedback }) => (

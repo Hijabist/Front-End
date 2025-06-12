@@ -3,7 +3,7 @@ export const teamMembers = [
     name: "Marsello Ormanda",
     role: "Machine Learning",
     type: "ML",
-    image: "./marsello-orlando.svg",
+    image: "marsello-orlando.jpg",
     bio: "Played a role in the pre-processing and data selection stage for the skintone classification model. Participated in project planning and video production.",
     social: {
       linkedin: "https://www.linkedin.com/in/marsello-ormanda",
@@ -14,7 +14,7 @@ export const teamMembers = [
     name: "Muhammad Ricky Rizaldi",
     role: "Machine Learning",
     type: "ML",
-    image: "./muhammad-ricky.svg",
+    image: "muhammad-ricky.svg",
     bio: "Responsible for data preprocessing, iterative training of skin tone and face shape classification models, converting the final models into TensorFlow.js format, and developing an inference pipeline to validate real-world performance.",
     social: {
       linkedin: "https://www.linkedin.com/in/mrickyr/",
@@ -26,7 +26,7 @@ export const teamMembers = [
     role: "Machine Learning",
     type: "ML",
     image:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop&crop=face",
+      "sukma.jpg",
     bio: "Building a hijab recommendation system by curating color and style data 🎨, then designing rule-based logic to help women 🧕 find hijab looks that best suit their skin tones and face shapes ✨✨",
     social: {
       linkedin: "https://www.linkedin.com/in/sukmasuciyana/",
@@ -34,28 +34,28 @@ export const teamMembers = [
     },
   },
   {
-    name: "Omar Hassan",
-    role: "Frontend Developer",
+    name: "Aldi Murad Rifdiansyah",
+    role: "Forntend Developer & Backend Developer",
     type: "Web",
     image:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
-    bio: "UI/UX specialist with expertise in React and responsive design. Created the intuitive user interface.",
+      "aldi-murad.jpg",
+    bio: "Fullstack Developer with experience in building web applications using modern frontend and backend technologies.",
     social: {
-      linkedin: "#",
-      github: "#",
+      linkedin: "https://www.linkedin.com/in/aldimuradrifdiansyah/",
+      github: "https://github.com/KILABID",
       twitter: "#",
     },
   },
   {
-    name: "Layla Mahmoud",
-    role: "Backend Developer",
+    name: "Haikal Abizar",
+    role: "Frontend Developer & Backend Developer",
     type: "Web",
     image:
-      "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face",
+      "haikal-abizar.jpg",
     bio: "Full-stack developer with focus on API development and system architecture. Built the backend infrastructure.",
     social: {
-      linkedin: "#",
-      github: "#",
+      linkedin: "https://www.linkedin.com/in/haikal-abizar/",
+      github: "https://github.com/abizarhaikal",
       twitter: "#",
     },
   },
